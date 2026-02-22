@@ -1,3 +1,4 @@
+import * as bcrypt from 'bcrypt';
 import {
   BadRequestException,
   Injectable,
@@ -17,6 +18,7 @@ export class UsersService {
     @InjectModel(Profile.name) private profileModel: Model<Profile>,
   ) {}
 
+  // CREAR USUARIO
   async create(createUserDto: CreateUserDto) {
     const { email, password, role, firstName, secondName, lastName, phone } =
       createUserDto;
@@ -25,6 +27,9 @@ export class UsersService {
     if (existingUser) {
       throw new BadRequestException('El mail ya está en uso');
     }
+
+    // bcrypt para hashear contraseña
+    const hashedPassword = await bcrypt.hash(password, 10);
 
     const newProfile = new this.profileModel({
       firstName,
@@ -36,7 +41,7 @@ export class UsersService {
 
     const newUser = new this.userModel({
       email,
-      password,
+      password: hashedPassword,
       role,
       profile: savedProfile._id,
     });
@@ -132,5 +137,10 @@ export class UsersService {
     await user.save();
 
     return { message: `Usuario con ID ${id} eliminado correctamente` };
+  }
+
+  // MÉTODO INTERNO PARA EL AUTH SERVICE
+  async findByEmail(email: string) {
+    return this.userModel.findOne({ email, deletedAt: null }).exec();
   }
 }
